@@ -10,8 +10,9 @@ import time
 import re
 import ctypes
 import winreg
+import platform
 
-# Definición de estilos para impresión en consola
+# console colors
 errorStyle = "\033[91m"
 warningStyle = "\033[93m"
 normalStyle = "\033[0m"
@@ -174,27 +175,37 @@ def download_blast():
 
 ###############################################################################################################################
 
-# Execution of  de PowerShell
+
 def check_execution_policy():
     try:
         print("=====================================")
         print("       Starting the process")
         print("=====================================")
-        load_module = subprocess.run(['powershell', 'Import-Module', 'Microsoft.PowerShell.Security'], capture_output=True, text=True)
-        if load_module.returncode != 0:
-            print(f"Error loading module Microsoft.PowerShell.Security: {load_module.stderr}")
-            return False
 
+        # Verificar si el sistema es Windows 10
+        is_windows10 = platform.system() == "Windows" and platform.release() == "10"
+
+        if not is_windows10:
+            # Intentar importar el módulo solo si NO es Windows 10
+            load_module = subprocess.run(['powershell', 'Import-Module', 'Microsoft.PowerShell.Security'], capture_output=True, text=True)
+            if load_module.returncode != 0:
+                print(f"Error loading module Microsoft.PowerShell.Security: {load_module.stderr}")
+                return False
+
+        # Obtener la política de ejecución
         result = subprocess.run(['powershell', 'Get-ExecutionPolicy'], capture_output=True, text=True)
         policy = result.stdout.strip()
 
         if policy != 'Unrestricted':
             print(f"Current execution policy: {policy}")
-            user_response = input(runStyle + "\nWould you like 'Hermes' to change the policy to 'Unrestricted'? (yes/no): ").strip().lower()
+            user_response = input("Would you like 'Hermes' to change the policy to 'Unrestricted'? (yes/no): ").strip().lower()
 
             if user_response == 'yes':
                 print("Attempting to change the execution policy to 'Unrestricted'...")
-                change_policy = subprocess.run(['powershell', 'Set-ExecutionPolicy', 'Unrestricted', '-Scope', 'CurrentUser', '-Force'], capture_output=True, text=True)
+                change_policy = subprocess.run(
+                    ['powershell', 'Set-ExecutionPolicy', 'Unrestricted', '-Scope', 'CurrentUser', '-Force'],
+                    capture_output=True, text=True
+                )
 
                 if change_policy.returncode == 0:
                     print("Execution policy successfully changed to Unrestricted ✔")
@@ -206,12 +217,11 @@ def check_execution_policy():
                 print("Execution policy will not be changed. Exiting the program...")
                 return False
         else:
-            print("\n✔  Execution policy is already set to 'Unrestricted'! ")
+            print("\n✔ Execution policy is already set to 'Unrestricted'! ")
             return True
     except Exception as e:
         print(f"Error checking or changing execution policy: {e}")
         return False
-
 
 
 ###############################################################################################################################
